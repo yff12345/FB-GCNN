@@ -1,0 +1,20 @@
+{
+    "eeg": {
+        "graph": {
+            "number_edges": 8,
+            "metric": "euclidean",
+            "normalized_laplacian": true,
+            "coarsening_levels": 4
+        },
+        "arch": {
+            "chebyshev": {
+                "layer1": {
+                    "batch_size": 100,
+                    "filter_size": [32],
+                    "pooling_size": [2],
+                    "poly_degree": [25]
+                }
+            }
+        }
+    }
+}
