@@ -68,7 +68,8 @@ def get_bbox(x, adjs, gc_output, layer_weights, rate=0.1):
 
 
     for k in range(mask.size(0)):
-        indices = mask[k].nonzero().squeeze(1)  # cuda
+        # indices = mask[k].nonzero().squeeze(1)
+        indices = torch.nonzero(mask[k]).squeeze(1)     # cuda
         adj_input_box.append(adj_set_zero(adjs[k], indices.cpu().numpy()))
         adj_input_box_2.append(sp.csr_matrix(adj_set_zero(adjs[k], indices.cpu().numpy())))
         tmp = x.cpu().numpy()[k, :, :]

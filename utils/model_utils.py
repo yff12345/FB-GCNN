@@ -65,5 +65,5 @@ def bspline_basis(K, x, degree=3):
 
     # Compute basis for each point
     basis = np.column_stack([cox_deboor(k, degree) for k in range(K)])
-    basis[-1,-1] = 1
+    basis[-1, -1] = 1
     return basis

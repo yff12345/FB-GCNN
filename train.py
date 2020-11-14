@@ -70,20 +70,19 @@ class Trainer(object):
         for epoch in range(self.args.max_epochs):
             mloss = self.train()
             acc = self.test(epoch)
-            is_best, is_terminate = self.early_stopping(acc)
-
-            if is_terminate:
-                break
-            if is_best:
-                state_dict = self.model.state_dict()
+            # is_best, is_terminate = self.early_stopping(acc)
+            #
+            # if is_terminate:
+            #     break
+            # if is_best:
+            #     state_dict = self.model.state_dict()
             if acc > max_acc:
                 max_acc = acc
 
             self.lr_scheduler.step(mloss)
 
-        self.model.load_state_dict(state_dict)
-        print(
-            f'*********************************** 第 {self.people + 1} 个人的 Max Accuracy: {max_acc * 100:.2f}% ***********************************\n\n\n')
+        # self.model.load_state_dict(state_dict)
+        print(f'*********************************** 第 {self.people + 1} 个人的 Max Accuracy: {max_acc * 100:.2f}% ***********************************\n\n\n')
         return max_acc
 
     def train(self):
