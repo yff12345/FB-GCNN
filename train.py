@@ -65,6 +65,7 @@ class Trainer(object):
         # print('Total parameters: {}'.format(total_parameters))
         # print('---' * 20)
 
+
     def run(self):
         max_acc = 0
         for epoch in range(self.args.max_epochs):
@@ -121,16 +122,6 @@ class Trainer(object):
         acc = self.mean_accuracy.compute()
         tqdm.write(f"Test Results - Epoch: {epoch} Accuracy: {acc * 100:.2f}%")
         return acc
-
-    def predict(self):
-        self.model.eval()
-
-        pre_data = self.test_dataset.eeg_data[:100].to(DEVICE)
-        pre_label = self.test_dataset.eeg_labels[:100].to(DEVICE)
-        test_output = self.model(pre_data)
-        pred_y = torch.max(test_output, 1)[1].data.numpy()
-        print(pred_y, 'prediction number')
-        print(pre_label.cpu().numpy(), 'real number')
 
 
 if __name__ == "__main__":

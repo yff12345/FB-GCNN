@@ -1,9 +1,22 @@
-from torch_geometric.data import Data
+import torch.nn as nn
 import torch
 
-edge_index = torch.tensor([[0, 1, 1, 2],
-                           [1, 0, 2, 1]], dtype=torch.long)
-x = torch.tensor([[-1], [0], [1]], dtype=torch.float)
+input = torch.randn(8, 3, 50, 100)
+print(input.requires_grad)
+# False
 
-data = Data(x=x, edge_index=edge_index)
-print(data)
+net = nn.Sequential(
+    nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=1),
+    nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1)
+)
+
+for name, param in net.named_parameters():
+    print(name, param.shape, param.requires_grad)
+# 0.weight True
+# 0.bias True
+# 1.weight True
+# 1.bias True
+
+output = net(input)
+print(output.requires_grad)
+# True
