@@ -1,7 +1,7 @@
 import numpy as np
-
 import torch
 from torch import nn
+
 
 def weight_init(m):
     with torch.no_grad():
@@ -14,6 +14,8 @@ def weight_init(m):
 :: 操作: 初始化一个正态分布取值、有范围限定（-2，2）的 W 矩阵和 bias 矩阵
 :: 输出: 一个 Tensor.Parameter 类型的初始化后(有取值范围限定)的 weight 矩阵和 bias 矩阵
 '''
+
+
 def truncated_normal_(tensor, mean=0, std=0.1):
     size = tensor.shape
     tmp = tensor.new_empty(size + (4,)).normal_()
@@ -22,6 +24,8 @@ def truncated_normal_(tensor, mean=0, std=0.1):
     tensor.data.copy_(tmp.gather(-1, ind).squeeze(-1))
     tensor.data.mul_(std).add_(mean)
     return tensor
+
+
 
 def bspline_basis(K, x, degree=3):
     """
