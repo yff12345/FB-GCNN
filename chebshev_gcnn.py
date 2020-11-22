@@ -45,7 +45,7 @@ def get_laplacians(adj_list):
     return laplacians_list
 
 
-def get_bbox(x, adjs, gc_output, layer_weights, rate=0.1):
+def get_bbox(x, adjs, gc_output, layer_weights, indices, rate=0.1):
     # x.shape = (100, 62, 5)
     # gc_output.shape = (100, 32, 62, 5)
     # layer_weights.shape = (100, 32, 62, 5)
@@ -69,11 +69,11 @@ def get_bbox(x, adjs, gc_output, layer_weights, rate=0.1):
 
     for k in range(mask.size(0)):
         # indices = mask[k].nonzero().squeeze(1)
-        indices = torch.nonzero(mask[k]).squeeze(1)     # cuda
-        adj_input_box.append(adj_set_zero(adjs[k], indices.cpu().numpy()))
-        adj_input_box_2.append(sp.csr_matrix(adj_set_zero(adjs[k], indices.cpu().numpy())))
+        # indices = torch.nonzero(mask[k]).squeeze(1)     # cuda
+        adj_input_box.append(adj_set_zero(adjs[k], indices[k].cpu().numpy()))
+        adj_input_box_2.append(sp.csr_matrix(adj_set_zero(adjs[k], indices[k].cpu().numpy())))
         tmp = x.cpu().numpy()[k, :, :]
-        input_box.append(set_zero(tmp, indices.cpu().numpy()))
+        input_box.append(set_zero(tmp, indices[k].cpu().numpy()))
 
     input_box = torch.stack(input_box, dim=0)
     return input_box.cuda(), get_laplacians(adj_input_box_2), adj_input_box
@@ -226,15 +226,15 @@ class FineGrainedGCNN(nn.Module):
 
         with torch.enable_grad():
             grad_cam = GradCam(model=self, feature_extractor=self.gc_expert_1, fc=self.fc_expert_1)
-            layer_weights_1 = grad_cam(x.detach(), y)
+            layer_weights_1, mask_1 = grad_cam(x.detach(), y)
 
-        input_box_1, laplacians_list_2, adjs_2 = get_bbox(x, self.adjs_1, gc_output_1, layer_weights_1, rate=0.3)
+        input_box_1, laplacians_list_2, adjs_2 = get_bbox(x, self.adjs_1, gc_output_1, layer_weights_1, mask_1, rate=0.3)
 
         # --- Expert 2
         self.gc_expert_2 = ChebshevGCNN(
-            in_channels=self.poly_degree[0],  # 25
-            out_channels=self.filter_size[0],  # 32
-            poly_degree=self.poly_degree[0],  # 25
+            in_channels=self.poly_degree[0],    # 25
+            out_channels=self.filter_size[0],   # 32
+            poly_degree=self.poly_degree[0],    # 25
             pooling_size=self.pooling_size[0],
             laplacians=laplacians_list_2
         ).to(DEVICE)
@@ -250,9 +250,9 @@ class FineGrainedGCNN(nn.Module):
 
         with torch.enable_grad():
             grad_cam = GradCam(model=self, feature_extractor=self.gc_expert_2, fc=self.fc_expert_2)
-            layer_weights_2 = grad_cam(input_box_1.detach(), y)
+            layer_weights_2, mask_2 = grad_cam(input_box_1.detach(), y)
 
-        input_box_2, laplacians_list_3, adjs_3 = get_bbox(input_box_1, adjs_2, gc_output_2, layer_weights_2, rate=0.3)
+        input_box_2, laplacians_list_3, adjs_3 = get_bbox(input_box_1, adjs_2, gc_output_2, layer_weights_2, mask_2, rate=0.3)
 
         # --- Expert 3
         self.gc_expert_3 = ChebshevGCNN(
