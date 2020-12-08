@@ -19,6 +19,9 @@ torch.manual_seed(manual_seed)
 torch.cuda.manual_seed(manual_seed)
 torch.cuda.manual_seed_all(manual_seed)
 
+# npy_path = 'E:/PycharmProjects/EXPERT_GCN/DATASET/'
+npy_path = '/media/data/hanyiik/gcn/dataset/'
+
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 FILE_PATH = '/media/data/hanyiik/FB_GCN(final)/res/'
 
@@ -92,7 +95,7 @@ class Trainer(object):
         pbar = tqdm(total=len(self.train_loader), leave=False, desc=desc.format(0))
         for step, (data, labels) in enumerate(self.train_loader):
             data, labels = data.to(DEVICE), labels.to(DEVICE)
-            logits = self.model(data, labels)
+            logits, cam_1, cam_2 = self.model(data, labels)
             loss = self.criterion(logits, labels)
             self.mean_loss.update(loss.cpu().detach().numpy())
 
@@ -120,7 +123,7 @@ class Trainer(object):
         with torch.no_grad():
             for step, batch in enumerate(self.test_loader):
                 data, labels = batch[0].to(DEVICE), batch[1]
-                logits = self.model(data, None)
+                logits, cam_1, cam_2 = self.model(data, None)
                 probs = F.softmax(logits, dim=-1).cpu().detach().numpy()
                 labels = labels.numpy()
                 self.mean_accuracy.update(probs, labels)
@@ -129,6 +132,22 @@ class Trainer(object):
         acc = self.mean_accuracy.compute()
         tqdm.write(f"Test Results - Epoch: {epoch} Accuracy: {acc * 100:.2f}%")
         return acc
+
+    def visualization(self, people, num):
+        self.model.load_state_dict(torch.load(f'{people}_params.pkl'))
+        input = np.load(npy_path + 'data_' + 'small' + '/test_dataset_{}.npy'.format(people))[num]
+        label = np.load(py_path + 'data_' + 'small' + '/test_labelset_{}.npy'.format(people))[num]
+
+        input = torch.from_numpy(input).unsqueeze(0).to(DEVICE)
+        prediction, cam_1, cam_2 = self.model(input)
+        prediction = F.softmax(prediction, dim=-1).cpu().detach().numpy()
+        pred_y = np.argmax(prediction, axis=1)
+        if pred_y == label:
+            print('Correct!')
+            return cam_1, cam_2
+        else:
+            print('Error!')
+            return pred_y, label
 
 
 if __name__ == "__main__":

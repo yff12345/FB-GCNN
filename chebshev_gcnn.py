@@ -269,4 +269,4 @@ class FineGrainedGCNN(nn.Module):
         logits_gate = logits_gate * pr_gate.view(pr_gate.size(0), pr_gate.size(1), 1)
         logits_gate = logits_gate.sum(-1)
 
-        return logits_gate
+        return logits_gate, nodes_cam_1, nodes_cam_2
