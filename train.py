@@ -20,6 +20,7 @@ torch.cuda.manual_seed(manual_seed)
 torch.cuda.manual_seed_all(manual_seed)
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+FILE_PATH = '/media/data/hanyiik/FB_GCN(final)/res/'
 
 
 class Trainer(object):
@@ -28,6 +29,7 @@ class Trainer(object):
         super(Trainer, self).__init__()
         self.args = args
         self.people = people_num
+        self.file_path = FILE_PATH
 
         dataset = EEGDataset
         adj_matrix = dataset.build_graph()
@@ -71,19 +73,16 @@ class Trainer(object):
         for epoch in range(self.args.max_epochs):
             mloss = self.train()
             acc = self.test(epoch)
-            # is_best, is_terminate = self.early_stopping(acc)
-            #
-            # if is_terminate:
-            #     break
-            # if is_best:
-            #     state_dict = self.model.state_dict()
             if acc > max_acc:
                 max_acc = acc
+                torch.save(self.model.state_dict(), f'{self.people + 1}_params.pkl')
 
             self.lr_scheduler.step(mloss)
 
         # self.model.load_state_dict(state_dict)
-        print(f'*********************************** 第 {self.people + 1} 个人的 Max Accuracy: {max_acc * 100:.2f}% ***********************************\n\n\n')
+        str_write = f'第 {self.people + 1} 个人的 Max Accuracy: {max_acc * 100:.2f}%'
+        print('***********************************' + str_write + '***********************************\n\n\n')
+        self.write_result(str_write)
         return max_acc
 
     def train(self):
@@ -104,6 +103,14 @@ class Trainer(object):
             pbar.update(1)
         pbar.close()
         return self.mean_loss.compute()
+
+    def write_result(self, wtr):
+        file_name = self.args.file_name
+        file_path = self.file_path
+        f = open(file_path + file_name, 'a')
+        f.write(wtr)
+        f.write('\n')
+        f.close()
 
     def test(self, epoch):
         self.model.eval()
@@ -130,6 +137,7 @@ if __name__ == "__main__":
     parser.add_argument('--max_epochs', type=int, default=100)
     parser.add_argument('--learning_rate', type=float, default=1e-3)
     parser.add_argument('--dropout', type=float, default=0.5)
+    parser.add_argument('--file_name', type=str, default='k=5、kernel=32、epoch=100.txt')
 
     args = parser.parse_args()
     config = json.load(open('config.json'))['eeg']

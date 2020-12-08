@@ -4,6 +4,7 @@ import numpy as np
 import pdb
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+np.seterr(divide='ignore',invalid='ignore')
 
 
 class FeatureExtractor:
@@ -39,10 +40,11 @@ class ModelOutputs:
 
 
 class GradCam:
-    def __init__(self, model, feature_extractor, fc):
+    def __init__(self, model, feature_extractor, fc, rate):
         self.model = model.to(DEVICE)
         self.flag = model.training
         self.model.eval()  # Sets the module in evaluation mode, dropout and batchnorm are disabled in the evaluation mode
+        self.rate = rate
 
         self.extractor = ModelOutputs(feature_extractor, fc)
 
@@ -73,27 +75,35 @@ class GradCam:
         weight = np.mean(weight, axis=(2, 3))       # (100, 32) 每个样本取 32 个特征图所对应的梯度图的均值，每个样本对应 32 个均值。
         target = features.cpu().detach().numpy()    # (100, 32, 62, 5)
         cam = np.zeros((target.shape[0], target.shape[2], target.shape[3]), dtype=np.float32)  # (100, 62, 5)
-        new_cam = np.zeros((target.shape[0], target.shape[2]), dtype=np.float32)  # (100, 62)
+        nodes_cam = np.zeros((target.shape[0], target.shape[2]), dtype=np.float32)  # (100, 62)
         new_cam_list = []
 
         for item in range(cam.shape[0]):
             for i, w in enumerate(weight[item]):
                 cam[item] += w * target[item, i, :, :]
 
-            cam[item] = np.maximum(cam[item], 0)  # 小于 0 的地方置零。。
-            cam[item] = cam[item] - np.min(cam[item])
-            cam[item] = cam[item] / np.max(cam[item])
+            # cam[item] = np.maximum(cam[item], 0)  # 小于 0 的地方置零。。
+            # cam[item] = cam[item] - np.min(cam[item])
+            # cam[item] = cam[item] / np.max(cam[item])
 
+        # pdb.set_trace()
         for j, one_cam in enumerate(cam):
-            new_cam[j] = np.sign(one_cam.sum(axis=1) - one_cam.sum(axis=1).mean())
+            mask_sum = one_cam.sum(axis=1)  # (62,)
+            mask_max = np.max(mask_sum)
+            mask_min = np.min(mask_sum)
+            mask_sum = (mask_sum - mask_min)/(mask_max - mask_min)
+            nodes_cam[j] = mask_sum
 
+        new_cam = np.sign(np.sign(nodes_cam - self.rate) + 1)
         new_cam = torch.from_numpy(new_cam).to(DEVICE)
-        new_cam = F.relu(new_cam)
+
         for my_cam in new_cam:
             new_cam_list.append(torch.nonzero(my_cam).squeeze(1))
 
-        # pdb.set_trace()
         if self.flag:
             self.model.train()
 
-        return grads_val.clone().detach(), new_cam_list
+        return new_cam_list, nodes_cam
+    '''
+        :: 
+    '''

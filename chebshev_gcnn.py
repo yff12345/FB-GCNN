@@ -45,31 +45,18 @@ def get_laplacians(adj_list):
     return laplacians_list
 
 
-def get_bbox(x, adjs, gc_output, layer_weights, indices, rate=0.1):
+def get_bbox(x, adjs, indices):
     # x.shape = (100, 62, 5)
     # gc_output.shape = (100, 32, 62, 5)
     # layer_weights.shape = (100, 32, 62, 5)
-    gc_cam = gc_output.clone().detach() * layer_weights  # (100, 32, 62, 5)
-    mask_sum = gc_cam.sum(1, keepdim=True).sum(3, keepdim=True)    # (100, 1, 62, 1)
 
-    batch_size, channels, nodes, features = mask_sum.size()
-
-    mask_sum = mask_sum.view(mask_sum.size(0), -1)  # (100, 62)
-    mask_max = mask_sum.max(-1, keepdim=True)[0]    # (100, 1)
-    mask_min = mask_sum.min(-1, keepdim=True)[0]    # (100, 1)
-
-    mask_sum = (mask_sum - mask_min) / (mask_max - mask_min)
-    mask = torch.sign(torch.sign(mask_sum - rate) + 1)  # (100, 62)
-    mask = mask.view(batch_size, nodes)       # (100, 62)
+    batch_size = len(indices)
 
     input_box = []
     adj_input_box = []
     adj_input_box_2 = []
 
-
-    for k in range(mask.size(0)):
-        # indices = mask[k].nonzero().squeeze(1)
-        # indices = torch.nonzero(mask[k]).squeeze(1)     # cuda
+    for k in range(batch_size):
         adj_input_box.append(adj_set_zero(adjs[k], indices[k].cpu().numpy()))
         adj_input_box_2.append(sp.csr_matrix(adj_set_zero(adjs[k], indices[k].cpu().numpy())))
         tmp = x.cpu().numpy()[k, :, :]
@@ -225,10 +212,10 @@ class FineGrainedGCNN(nn.Module):
         logits_expert_1 = self.fc_expert_1(gc_output_1_re)      # (100, 7)
 
         with torch.enable_grad():
-            grad_cam = GradCam(model=self, feature_extractor=self.gc_expert_1, fc=self.fc_expert_1)
-            layer_weights_1, mask_1 = grad_cam(x.detach(), y)
+            grad_cam = GradCam(model=self, feature_extractor=self.gc_expert_1, fc=self.fc_expert_1, rate=0.3)
+            mask_1, nodes_cam_1 = grad_cam(x.detach(), y)
 
-        input_box_1, laplacians_list_2, adjs_2 = get_bbox(x, self.adjs_1, gc_output_1, layer_weights_1, mask_1, rate=0.3)
+        input_box_1, laplacians_list_2, adjs_2 = get_bbox(x, self.adjs_1, mask_1)
 
         # --- Expert 2
         self.gc_expert_2 = ChebshevGCNN(
@@ -249,10 +236,10 @@ class FineGrainedGCNN(nn.Module):
         logits_expert_2 = self.fc_expert_2(gc_output_2_re)  # (100, 7)
 
         with torch.enable_grad():
-            grad_cam = GradCam(model=self, feature_extractor=self.gc_expert_2, fc=self.fc_expert_2)
-            layer_weights_2, mask_2 = grad_cam(input_box_1.detach(), y)
+            grad_cam = GradCam(model=self, feature_extractor=self.gc_expert_2, fc=self.fc_expert_2, rate=0.3)
+            mask_2, nodes_cam_2 = grad_cam(input_box_1.detach(), y)
 
-        input_box_2, laplacians_list_3, adjs_3 = get_bbox(input_box_1, adjs_2, gc_output_2, layer_weights_2, mask_2, rate=0.3)
+        input_box_2, laplacians_list_3, adjs_3 = get_bbox(input_box_1, adjs_2, mask_2)
 
         # --- Expert 3
         self.gc_expert_3 = ChebshevGCNN(
