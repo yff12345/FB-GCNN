@@ -201,6 +201,33 @@ class FineGrainedGCNN(nn.Module):
             out_features=self.classes_num
         )
 
+        # --- Expert 2
+        self.gc_expert_2 = ChebshevGCNN(
+            in_channels=self.poly_degree[0],  # 25
+            out_channels=self.filter_size[0],  # 32
+            poly_degree=self.poly_degree[0],  # 25
+            pooling_size=self.pooling_size[0],
+            laplacians=laplacians_1
+        )
+        self.fc_expert_2 = nn.Linear(
+            in_features=62 * self.filter_size[0] * self.feature_num,
+            out_features=self.classes_num
+        ).to(DEVICE)
+
+        # --- Expert 3
+        self.gc_expert_3 = ChebshevGCNN(
+            in_channels=self.poly_degree[0],  # 25
+            out_channels=self.filter_size[0],  # 32
+            poly_degree=self.poly_degree[0],  # 25
+            pooling_size=self.pooling_size[0],
+            laplacians=laplacians_1
+        )
+        self.fc_expert_3 = nn.Linear(
+            in_features=62 * self.filter_size[0] * self.feature_num,
+            out_features=self.classes_num
+        ).to(DEVICE)
+
+
 
 
     def forward(self, x, y):
@@ -225,10 +252,6 @@ class FineGrainedGCNN(nn.Module):
             pooling_size=self.pooling_size[0],
             laplacians=laplacians_list_2
         ).to(DEVICE)
-        self.fc_expert_2 = nn.Linear(
-            in_features=62 * self.filter_size[0] * self.feature_num,
-            out_features=self.classes_num
-        ).to(DEVICE)
 
         gc_output_2 = self.gc_expert_2(input_box_1)  # (100, 32, 62, 5)
         batch_size, filter_num, node_num, feature_num = gc_output_2.size()
@@ -248,10 +271,6 @@ class FineGrainedGCNN(nn.Module):
             poly_degree=self.poly_degree[0],  # 25
             pooling_size=self.pooling_size[0],
             laplacians=laplacians_list_3
-        ).to(DEVICE)
-        self.fc_expert_3 = nn.Linear(
-            in_features=62 * self.filter_size[0] * self.feature_num,
-            out_features=self.classes_num
         ).to(DEVICE)
         gc_output_3 = self.gc_expert_3(input_box_2)  # (100, 32, 31, 5)
         batch_size, filter_num, node_num, feature_num = gc_output_3.size()

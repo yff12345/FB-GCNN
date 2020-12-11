@@ -9,10 +9,10 @@
         "arch": {
             "chebyshev": {
                 "layer1": {
-                    "batch_size": 200,
+                    "batch_size": 100,
                     "filter_size": [32],
                     "pooling_size": [2],
-                    "poly_degree": [25]
+                    "poly_degree": [5]
                 }
             }
         }
